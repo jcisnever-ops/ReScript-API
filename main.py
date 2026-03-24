@@ -4,8 +4,8 @@ Hosted backend service for Base44 ReScript app
 Handles: yt-dlp download + Deepgram transcription
 """
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 import os
 import tempfile
 import subprocess
@@ -16,17 +16,6 @@ app = FastAPI(title="ReScript Transcription API")
 
 # Config from environment
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "0b45d86683f50c93301257790761a1c33128b775")
-
-class TranscribeRequest(BaseModel):
-    video_url: str
-    project_name: str = "untitled"
-
-class TranscribeResponse(BaseModel):
-    success: bool
-    transcript: str
-    duration_seconds: float
-    project_name: str
-    error: str = ""
 
 def download_video_audio(video_url: str) -> str:
     """Download audio from video URL using yt-dlp"""
@@ -92,15 +81,15 @@ def transcribe_audio(audio_path: str) -> str:
     
     return transcript
 
-@app.post("/transcribe", response_model=TranscribeResponse)
-async def transcribe_video(request: TranscribeRequest):
+@app.post("/transcribe")
+async def transcribe_video(video_url: str, project_name: str = "untitled"):
     """
     Download video + transcribe audio
     Called by Base44 ReScript frontend
     """
     try:
         # Step 1: Download audio
-        audio_path = download_video_audio(request.video_url)
+        audio_path = download_video_audio(video_url)
         
         # Step 2: Transcribe with Deepgram
         transcript = transcribe_audio(audio_path)
@@ -115,22 +104,22 @@ async def transcribe_video(request: TranscribeRequest):
         except:
             pass  # ignore cleanup errors
         
-        return TranscribeResponse(
-            success=True,
-            transcript=transcript,
-            duration_seconds=duration,
-            project_name=request.project_name,
-            error=""
-        )
+        return {
+            "success": True,
+            "transcript": transcript,
+            "duration_seconds": duration,
+            "project_name": project_name,
+            "error": ""
+        }
         
     except Exception as e:
-        return TranscribeResponse(
-            success=False,
-            transcript="",
-            duration_seconds=0.0,
-            project_name=request.project_name,
-            error=str(e)
-        )
+        return {
+            "success": False,
+            "transcript": "",
+            "duration_seconds": 0.0,
+            "project_name": project_name,
+            "error": str(e)
+        }
 
 @app.get("/health")
 async def health_check():
