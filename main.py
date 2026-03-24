@@ -79,8 +79,8 @@ def transcribe_audio(audio_path: str) -> str:
     }
     params = {
         "model": "nova-2",  # best accuracy
-        "smart_format": True,
-        "punctuate": True,
+        "smart_format": "true",  # Deepgram expects lowercase string
+        "punctuate": "true",  # Deepgram expects lowercase string
         "language": "en"
     }
     
