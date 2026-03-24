@@ -82,7 +82,7 @@ def transcribe_audio(audio_path: str) -> str:
     return transcript
 
 @app.post("/transcribe")
-async def transcribe_video(video_url: str, project_name: str = "untitled"):
+async def transcribe_video(request: TranscribeRequest):
     """
     Download video + transcribe audio
     Called by Base44 ReScript frontend
