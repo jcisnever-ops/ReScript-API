@@ -6,6 +6,7 @@ Handles: yt-dlp download + Deepgram transcription
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 import os
 import tempfile
 import subprocess
@@ -13,6 +14,10 @@ import requests
 import json
 
 app = FastAPI(title="ReScript Transcription API")
+
+class TranscribeRequest(BaseModel):
+    video_url: str
+    project_name: str = "untitled"
 
 # Config from environment
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "0b45d86683f50c93301257790761a1c33128b775")
@@ -89,7 +94,7 @@ async def transcribe_video(request: TranscribeRequest):
     """
     try:
         # Step 1: Download audio
-        audio_path = download_video_audio(video_url)
+        audio_path = download_video_audio(request.video_url)
         
         # Step 2: Transcribe with Deepgram
         transcript = transcribe_audio(audio_path)
@@ -108,7 +113,7 @@ async def transcribe_video(request: TranscribeRequest):
             "success": True,
             "transcript": transcript,
             "duration_seconds": duration,
-            "project_name": project_name,
+            "project_name": request.project_name,
             "error": ""
         }
         
@@ -117,7 +122,7 @@ async def transcribe_video(request: TranscribeRequest):
             "success": False,
             "transcript": "",
             "duration_seconds": 0.0,
-            "project_name": project_name,
+            "project_name": request.project_name,
             "error": str(e)
         }
 
