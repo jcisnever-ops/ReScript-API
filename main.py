@@ -25,19 +25,19 @@ DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "0b45d86683f50c93301257790761a1
 def download_video_audio(video_url: str) -> str:
     """Download audio from video URL using yt-dlp"""
     temp_dir = tempfile.mkdtemp()
-    audio_path = os.path.join(temp_dir, "audio.wav")
+    audio_path = os.path.join(temp_dir, "audio.webm")  # Default format, no ffmpeg needed
     
     try:
-        # yt-dlp command - extract audio, convert to WAV
+        # yt-dlp command - download best audio, no conversion (avoid ffmpeg dependency)
         cmd = [
             "yt-dlp",
-            "-x",  # extract audio
-            "--audio-format", "wav",
+            "-f", "bestaudio",  # download best audio format
             "-o", audio_path,
             video_url,
             "--no-playlist",  # single video only
             "--quiet",  # suppress output
-            "--no-warnings"
+            "--no-warnings",
+            "--no-post-overwrites"  # don't convert formats
         ]
         
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
@@ -56,16 +56,26 @@ def download_video_audio(video_url: str) -> str:
         raise Exception(f"Download failed: {str(e)}")
 
 def transcribe_audio(audio_path: str) -> str:
-    """Transcribe audio file using Deepgram API"""
+    """Transcribe audio file using Deepgram API (supports webm/ogg formats)"""
+    
+    # Detect actual file extension
+    _, ext = os.path.splitext(audio_path)
+    content_type = {
+        ".webm": "audio/webm",
+        ".ogg": "audio/ogg",
+        ".mp4": "audio/mp4",
+        ".m4a": "audio/m4a",
+        ".wav": "audio/wav"
+    }.get(ext.lower(), "audio/octet-stream")
     
     with open(audio_path, "rb") as audio_file:
         audio_data = audio_file.read()
     
-    # Deepgram API endpoint
+    # Deepgram API endpoint (auto-detects format)
     url = "https://api.deepgram.com/v1/listen"
     headers = {
         "Authorization": f"Token {DEEPGRAM_API_KEY}",
-        "Content-Type": "audio/wav"
+        "Content-Type": content_type
     }
     params = {
         "model": "nova-2",  # best accuracy
